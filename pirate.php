@@ -12,17 +12,41 @@ $board = [];
 
 $game = []; // Master game state data;
 
+function distance($entity1, $entity2){
+    $d = (
+        abs($entity1['xp'] - $entity2['xp']) 
+    +   abs($entity1['yp'] - $entity2['yp']) 
+    +   abs($entity1['zp'] - $entity2['zp'])
+    ) / 2;
+
+    return $d;
+}
+
 function optimize_board()
 {
     global $board, $game;
 
-    foreach($game['ship'][1] as &$ship){
-        foreach ($game['barrel'] as &$barrel) {
-            $d = (
-                abs($ship['xp'] - $barrel['xp']) 
-            +   abs($ship['yp'] - $barrel['yp']) 
-            +   abs($ship['zp'] - $barrel['zp'])
-            ) / 2;
+    if(! isset($game['barrel'])) return false; // We do not have any barrels
+
+    foreach ($game['barrel'] as &$barrel) {
+        foreach($game['ship'][1] as &$ship){
+            foreach($game['ship'][0] as &$opponent){
+                $d = distance($opponent, $barrel);
+
+                $barrel['opponent_distance'][] = [
+                    'id' => $opponent['id'],
+                    'distance' => $d
+                ];
+
+                $d2 = distance($ship, $opponent);
+
+                $ship['opponent_distance'][] = [
+                    'id' => $opponent['id'],
+                    'distance' => $d2
+                ];
+            }
+
+            $d = distance($ship, $barrel);
 
             $ship['barrel_distance'][] = [
                 'id' => $barrel['id'],
@@ -91,7 +115,18 @@ while (TRUE)
                 'y' => $y,
             ];
 
-            $board[$x][$y] += 10;
+            $board[$x][$y] += 100;
+        }
+        elseif ($entityType == 'CANNONBALL') {
+            $game['canon'][] = [
+                'id' => $entityId,
+                'x' => $x,
+                'y' => $y,
+                'by' => $arg1,
+                'incoming_in' => $arg2,
+            ];
+
+            $board[$x][$y] -= 50 + $arg2;
         }
     }
 
@@ -99,12 +134,41 @@ while (TRUE)
 
     foreach($game['ship'][1] as $shipID => $ship)
     {
+        if(! isset($game['barrel'])){
+            $nearestOpponentShip = $game['ship'][0][0];
+            $x = $nearestOpponentShip['x'];
+            $y = $nearestOpponentShip['y'];
+
+            echo ("FIRE $x $y\n");
+            continue;
+        }
+
         usort($ship['barrel_distance'], 'by_distance_ASC');
+        //dd($ship['barrel_distance']);
         $nearestBarrel = $ship['barrel_distance'][0];
-        $x = $game['barrel'][$nearestBarrel['id']]['x'];
-        $y = $game['barrel'][$nearestBarrel['id']]['y'];
-        dd([$nearestBarrel, $ship]);
-        echo ("MOVE $x $y\n"); // Any valid action, such as "WAIT" or "MOVE x y"
+        $distance = $nearestBarrel['distance'];
+        $barrel = $game['barrel'][$nearestBarrel['id']];
+
+        // If enemy is reaching faster than us, lets canon it!
+        usort($barrel['opponent_distance'], 'by_distance_ASC');
+        dd($barrel['opponent_distance']);
+
+        $distance = $barrel['opponent_distance'][0]['distance'] - $distance;
+        dd('Distance is '.$distance);
+
+        if($distance > 0){
+            dd('We will reach faster');
+            $x = $barrel['x'];
+            $y = $barrel['y'];
+            echo ("MOVE $x $y\n"); // Any valid action, such as "WAIT" or "MOVE x y"
+        }
+        else {
+            dd('Enemy will reach faster');
+            $x = $barrel['x'];
+            $y = $barrel['y'];
+            // Fire.
+            echo ("FIRE $x $y\n");
+        }
     }
 }
 ?>
