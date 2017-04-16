@@ -156,19 +156,10 @@ while (TRUE)
         $distance = $barrel['opponent_distance'][0]['distance'] - $distance;
         dd('Distance is '.$distance);
 
-        if($distance > 0){
-            dd('We will reach faster');
-            $x = $barrel['x'];
-            $y = $barrel['y'];
-            echo ("MOVE $x $y\n"); // Any valid action, such as "WAIT" or "MOVE x y"
-        }
-        else {
-            dd('Enemy will reach faster');
-            $x = $barrel['x'];
-            $y = $barrel['y'];
-            // Fire.
-            echo ("FIRE $x $y\n");
-        }
+        dd('We will reach faster');
+        $x = $barrel['x'];
+        $y = $barrel['y'];
+        echo ("MOVE $x $y\n"); // Any valid action, such as "WAIT" or "MOVE x y"
     }
 }
 ?>
