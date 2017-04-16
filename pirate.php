@@ -11,6 +11,7 @@ function by_distance_ASC($a, $b){
 $board = [];
 
 $game = []; // Master game state data;
+$canonCooldown = [];
 
 function distance($entity1, $entity2){
     $d = (
@@ -69,6 +70,7 @@ while (TRUE)
     fscanf(STDIN, "%d",
         $myShipCount // the number of remaining ships
     );
+
     fscanf(STDIN, "%d",
         $entityCount // the number of entities (e.g. ships, mines or cannonballs)
     );
@@ -103,6 +105,12 @@ while (TRUE)
             ];
 
             $board[$x][$y] += $arg4;
+
+            if(! isset($canonCooldown[$entityId])){
+                $canonCooldown[$entityId] = 1;
+            }
+
+            $canonCooldown[$entityId]--;
         }
         elseif ($entityType == 'BARREL') {
             $game['barrel'][$entityId] = [
@@ -138,8 +146,19 @@ while (TRUE)
             $nearestOpponentShip = $game['ship'][0][0];
             $x = $nearestOpponentShip['x'];
             $y = $nearestOpponentShip['y'];
-
-            echo ("FIRE $x $y\n");
+            if(distance($ship, $nearestOpponentShip) <= 10){
+                if($canonCooldown[$ship['id']] <= 0){
+                    $canonCooldown[$ship['id']] = 2;
+                    echo ("FIRE $x $y\n");
+                }
+                else {
+                    echo ("WAIT\n");
+                }
+            }
+            else {
+                // We are out of range, go near.
+                echo ("MOVE $x $y\n");
+            }
             continue;
         }
 
@@ -156,18 +175,21 @@ while (TRUE)
         $distance = $barrel['opponent_distance'][0]['distance'] - $distance;
         dd('Distance is '.$distance);
 
-        if($distance > 0){
+        $barrelX = $barrel['x'];
+        $barrelY = $barrel['y'];
+        if($distance > -1){
             dd('We will reach faster');
-            $x = $barrel['x'];
-            $y = $barrel['y'];
-            echo ("MOVE $x $y\n"); // Any valid action, such as "WAIT" or "MOVE x y"
+            echo ("MOVE $barrelX $barrelY\n"); // Any valid action, such as "WAIT" or "MOVE x y"
         }
         else {
-            dd('Enemy will reach faster');
-            $x = $barrel['x'];
-            $y = $barrel['y'];
-            // Fire.
-            echo ("FIRE $x $y\n");
+            if(distance($ship, $barrel) <= 10 and $canonCooldown[$ship['id']] <= 0){
+                $canonCooldown[$ship['id']] = 2;
+                echo ("FIRE $barrelX $barrelY\n");
+            }
+            else {
+                // We are out of range, go near.
+                echo ("MOVE $barrelX $barrelY\n");
+            }
         }
     }
 }
